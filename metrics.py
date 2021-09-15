@@ -1,6 +1,6 @@
 import skimage
 import cv2
-from skimage.metrics import compare_psnr,compare_ssim
+from skimage.measure import compare_psnr,compare_ssim
 
 
 def calc_psnr(im1, im2):
