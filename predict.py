@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.utils.data as Data
-import torch.nn.functional as F
+# import torch.nn.functional as F
 import torchvision
 #Tools lib
 import numpy as np
@@ -16,6 +16,10 @@ import argparse
 from models import *
 #Metrics lib
 from metrics import calc_psnr, calc_ssim
+import math
+
+THUMBNAIL_MAX_WIDTH = 800
+THUMBNAIL_MAX_HEIGHT = 800
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -53,6 +57,8 @@ def predict(image):
     return out
 
 
+
+
 if __name__ == '__main__':
     args = get_args()
 
@@ -65,10 +71,22 @@ if __name__ == '__main__':
         for i in range(num):
             print ('Processing image: %s'%(input_list[i]))
             img = cv2.imread(args.input_dir + input_list[i])
+            height,width,channels = img.shape
+            print("----Encountered image of size {} and width {}".format(height,width))
+            if height > THUMBNAIL_MAX_HEIGHT or width > THUMBNAIL_MAX_WIDTH:
+                scale_percent = 50 # percent of original size
+                width = int(img.shape[1] * scale_percent / 100)
+                height = int(img.shape[0] * scale_percent / 100)
+                dim = (width, height)
+                img = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
+                new_height,new_width,_ = img.shape
+                print("Image dimensions are now {},{} from {},{}".format(height,width,new_height,new_width))
             img = align_to_four(img)
             result = predict(img)
             img_name = input_list[i].split('.')[0]
-            cv2.imwrite(args.output_dir + img_name + '.jpg', result)
+            print("Writing {} to function now at {}".format(img_name,args.output_dir + img_name + '.jpg'))
+            if not cv2.imwrite(args.output_dir + img_name + '.jpg', result):
+                raise Exception("Could not write image {} to file".format(args.output_dir + img_name + '.jpg'))
 
     elif args.mode == 'test':
         input_list = sorted(os.listdir(args.input_dir))
@@ -77,8 +95,10 @@ if __name__ == '__main__':
         cumulative_psnr = 0
         cumulative_ssim = 0
         for i in range(num):
-            print ('Processing image: %s'%(input_list[i]))
+            
             img = cv2.imread(args.input_dir + input_list[i])
+            
+
             gt = cv2.imread(args.gt_dir + gt_list[i])
             img = align_to_four(img)
             gt = align_to_four(gt)
@@ -93,3 +113,6 @@ if __name__ == '__main__':
 
     else:
         print ('Mode Invalid!')
+
+# CUDA_VISIBLE_DEVICES=0 python predict.py --mode demo --input_dir ./demo/input/ --output_dir ./demo/output/
+
